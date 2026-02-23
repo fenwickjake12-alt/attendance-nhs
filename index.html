@@ -23,7 +23,7 @@ const SCHOOL_LAT = 42.579067;
 const SCHOOL_LON = -82.994902;
 const RADIUS = 1000;
 const ACCESS_CODE = "NHS214";
-const FLOW_URL = "https://script.google.com/macros/s/AKfycbx7lBBddX8jWLMRbaKabgTqVV_yebqngJmH9oLcEgej_U93YRfNMlT11GsuAcKrD14G/exec";
+const FLOW_URL = "https://script.google.com/macros/s/AKfycbyaUvzW2KkTOA7-KtqongWYjzC_lYwMLQ37TAM1QchNP8fs_eKUWtVDrteTqQ2BLr5b/exec";
 
 let userLat = null;
 let userLon = null;
@@ -117,22 +117,20 @@ function submitAttendance() {
 
   }
 
-  fetch(FLOW_URL, {
+fetch(FLOW_URL, {
 
-    method: "POST",
+  method: "POST",
 
-    headers: {
-      "Content-Type": "application/json"
-    },
+  headers: {
+    "Content-Type": "application/json"
+  },
 
-    body: JSON.stringify({
-      name: name,
-      lat: userLat,
-      lon: userLon
-    })
-
+  body: JSON.stringify({
+    name: name,
+    date: "2/22/26"   // change per meeting
   })
 
+})
   .then(function(response) {
 
     document.getElementById("status").innerText =
@@ -154,4 +152,5 @@ function submitAttendance() {
 
 </body>
 </html>
+
 
