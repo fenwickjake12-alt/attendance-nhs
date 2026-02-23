@@ -1,131 +1,110 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>NHS Attendance</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      height: 100vh;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: #333;
-    }
-
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      text-align: center;
-    }
-
-    h2 {
-      margin-top: 0;
-      color: #2a5298;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #2a5298;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1e3c72;
-    }
-
-    .status {
-      margin-top: 15px;
-      font-weight: bold;
-    }
-
-    .footer {
-      margin-top: 20px;
-      font-size: 12px;
-      color: #666;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="card">
-    <h2>National Honor Society</h2>
-    <p>Please sign in to record your attendance</p>
-
-    <input id="name" placeholder="Full Name">
-    <input id="code" placeholder="Access Code" type="password">
-
-    <button onclick="submitAttendance()">Submit Attendance</button>
-
-    <div class="status" id="status"></div>
-
-    <div class="footer">
-      Location required • One submission per meeting
-    </div>
-  </div>
-
 <script>
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbwFjPt3EeEuUSAOXk9sk-VNexyAeNMldKoFskX7IYa9hsKSSctT2PVIXmN8U-4LM-m7/exec";
-const ACCESS_CODE = "NHS2026";
-const MEET_LAT = 42.5790;
-const MEET_LON = -82.9949;
-const RADIUS = 10;
+  // ====== CONFIGURATION ======
+  const SCHOOL_LAT = 42.579067;
+  const SCHOOL_LON = -82.994902;
+  const RADIUS = 1000; // meters
+  const ACCESS_CODE = "NHS214";
+  const FLOW_URL = "https://script.google.com/macros/s/AKfycbw9iJGJK0KKS-tfjvb8L9iZcNcrtS_6KKnYbP5JhiGbyfDONiDzXWJ4ROzoEgLmFTDy/exec";
+  // ===========================
 
-function submitAttendance() {
-  document.getElementById("status").innerText = "Checking location...";
+  let userLat = null;
+  let userLon = null;
+  let locationVerified = false;
 
-  if(document.getElementById("code").value !== ACCESS_CODE){
-    document.getElementById("status").innerText = "❌ Wrong access code";
-    return;
+  // Distance calculator
+  function distance(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2-lat1) * Math.PI/180;
+    const dLon = (lon2-lon1) * Math.PI/180;
+
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1*Math.PI/180) *
+      Math.cos(lat2*Math.PI/180) *
+      Math.sin(dLon/2) *
+      Math.sin(dLon/2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
+  // Verify location
+  function verifyLocation() {
 
-    if(Math.abs(lat - MEET_LAT) > RADIUS || Math.abs(lon - MEET_LON) > RADIUS){
-      document.getElementById("status").innerText = "❌ You are not at the meeting location";
+    document.getElementById("status").innerText = "Checking location...";
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
+
+        const d = distance(SCHOOL_LAT, SCHOOL_LON, userLat, userLon);
+
+        if (d <= RADIUS) {
+          locationVerified = true;
+          document.getElementById("status").innerText =
+            "✅ Location verified. You may sign in.";
+          document.getElementById("form").style.display = "block";
+        }
+        else {
+          locationVerified = false;
+          document.getElementById("status").innerText =
+            "❌ You are not at the meeting location.";
+        }
+      },
+
+      function(error) {
+        document.getElementById("status").innerText =
+          "❌ Please enable location services.";
+      }
+    );
+  }
+
+  // Run location check on load
+  verifyLocation();
+
+  // Submit attendance
+  function submitAttendance() {
+
+    const name = document.getElementById("name").value;
+    const code = document.getElementById("code").value;
+
+    if (!locationVerified) {
+      alert("Location not verified.");
       return;
     }
 
-    fetch(SHEET_URL, {
+    if (!name) {
+      alert("Enter your name.");
+      return;
+    }
+
+    if (code !== ACCESS_CODE) {
+      alert("Invalid access code.");
+      return;
+    }
+
+    fetch(FLOW_URL, {
       method: "POST",
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
-        name: document.getElementById("name").value,
-        lat: lat,
-        lon: lon
+        name: name,
+        lat: userLat,
+        lon: userLon
       })
-    }).then(() => {
-      document.getElementById("status").innerText = "✅ Attendance recorded!";
+    })
+    .then(response => response.text())
+    .then(data => {
+
+      document.getElementById("status").innerText =
+        "✅ Attendance recorded successfully!";
+
+      document.getElementById("form").style.display = "none";
+    })
+    .catch(error => {
+      alert("Submission failed: " + error);
     });
-  });
-}
+
+  }
 </script>
-</body>
-</html>
-
-
-
-
-
