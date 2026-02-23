@@ -1,111 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NHS Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<h2>NHS Attendance Check-In</h2>
+
+<p id="status">Checking location...</p>
+
+<div id="form" style="display:none;">
+  <input id="name" placeholder="Full Name"><br><br>
+  <input id="code" placeholder="Access Code"><br><br>
+  <button onclick="submitAttendance()">Submit</button>
+</div>
+
 <script>
-  // ====== CONFIGURATION ======
-  const SCHOOL_LAT = 42.579067;
-  const SCHOOL_LON = -82.994902;
-  const RADIUS = 1000; // meters
-  const ACCESS_CODE = "NHS214";
-  const FLOW_URL = "https://script.google.com/macros/s/AKfycbw9iJGJK0KKS-tfjvb8L9iZcNcrtS_6KKnYbP5JhiGbyfDONiDzXWJ4ROzoEgLmFTDy/exec";
-  // ===========================
 
-  let userLat = null;
-  let userLon = null;
-  let locationVerified = false;
+const SCHOOL_LAT = 42.579067;
+const SCHOOL_LON = -82.994902;
+const RADIUS = 1000;
+const ACCESS_CODE = "NHS214";
+const FLOW_URL = "https://script.google.com/macros/s/AKfycbw9iJGJK0KKS-tfjvb8L9iZcNcrtS_6KKnYbP5JhiGbyfDONiDzXWJ4ROzoEgLmFTDy/exec";
 
-  // Distance calculator
-  function distance(lat1, lon1, lat2, lon2) {
-    const R = 6371000;
-    const dLat = (lat2-lat1) * Math.PI/180;
-    const dLon = (lon2-lon1) * Math.PI/180;
+let userLat = null;
+let userLon = null;
+let locationVerified = false;
 
-    const a =
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1*Math.PI/180) *
-      Math.cos(lat2*Math.PI/180) *
-      Math.sin(dLon/2) *
-      Math.sin(dLon/2);
+function distance(lat1, lon1, lat2, lon2) {
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  }
+  const R = 6371000;
 
-  // Verify location
-  function verifyLocation() {
+  const dLat = (lat2 - lat1) * Math.PI/180;
+  const dLon = (lon2 - lon1) * Math.PI/180;
 
-    document.getElementById("status").innerText = "Checking location...";
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2) *
+    Math.sin(dLon/2);
 
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-        userLat = pos.coords.latitude;
-        userLon = pos.coords.longitude;
+  return R * c;
+}
 
-        const d = distance(SCHOOL_LAT, SCHOOL_LON, userLat, userLon);
+function verifyLocation() {
 
-        if (d <= RADIUS) {
-          locationVerified = true;
-          document.getElementById("status").innerText =
-            "✅ Location verified. You may sign in.";
-          document.getElementById("form").style.display = "block";
-        }
-        else {
-          locationVerified = false;
-          document.getElementById("status").innerText =
-            "❌ You are not at the meeting location.";
-        }
-      },
+  document.getElementById("status").innerText = "Checking location...";
 
-      function(error) {
+  navigator.geolocation.getCurrentPosition(
+
+    function(position) {
+
+      userLat = position.coords.latitude;
+      userLon = position.coords.longitude;
+
+      const d = distance(SCHOOL_LAT, SCHOOL_LON, userLat, userLon);
+
+      if (d <= RADIUS) {
+
+        locationVerified = true;
+
         document.getElementById("status").innerText =
-          "❌ Please enable location services.";
+          "Location verified. You may sign in.";
+
+        document.getElementById("form").style.display = "block";
+
+      } else {
+
+        document.getElementById("status").innerText =
+          "You are not at the meeting location.";
+
       }
-    );
-  }
 
-  // Run location check on load
-  verifyLocation();
+    },
 
-  // Submit attendance
-  function submitAttendance() {
-
-    const name = document.getElementById("name").value;
-    const code = document.getElementById("code").value;
-
-    if (!locationVerified) {
-      alert("Location not verified.");
-      return;
-    }
-
-    if (!name) {
-      alert("Enter your name.");
-      return;
-    }
-
-    if (code !== ACCESS_CODE) {
-      alert("Invalid access code.");
-      return;
-    }
-
-    fetch(FLOW_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        name: name,
-        lat: userLat,
-        lon: userLon
-      })
-    })
-    .then(response => response.text())
-    .then(data => {
+    function(error) {
 
       document.getElementById("status").innerText =
-        "✅ Attendance recorded successfully!";
+        "Please allow location access.";
 
-      document.getElementById("form").style.display = "none";
-    })
-    .catch(error => {
-      alert("Submission failed: " + error);
-    });
+    }
+
+  );
+}
+
+verifyLocation();
+
+function submitAttendance() {
+
+  const name = document.getElementById("name").value;
+  const code = document.getElementById("code").value;
+
+  if (!locationVerified) {
+
+    alert("Location not verified.");
+    return;
 
   }
+
+  if (name === "") {
+
+    alert("Enter your name.");
+    return;
+
+  }
+
+  if (code !== ACCESS_CODE) {
+
+    alert("Invalid access code.");
+    return;
+
+  }
+
+  fetch(FLOW_URL, {
+
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json"
+    },
+
+    body: JSON.stringify({
+      name: name,
+      lat: userLat,
+      lon: userLon
+    })
+
+  })
+
+  .then(function(response) {
+
+    document.getElementById("status").innerText =
+      "Attendance recorded successfully.";
+
+    document.getElementById("form").style.display = "none";
+
+  })
+
+  .catch(function(error) {
+
+    alert("Error submitting attendance.");
+
+  });
+
+}
+
 </script>
 
+</body>
+</html>
