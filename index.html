@@ -116,6 +116,16 @@ function submitAttendance() {
     return;
 
   }
+// Generate or get device ID
+let deviceId = localStorage.getItem("nhs_device_id");
+
+if (!deviceId) {
+
+  deviceId = crypto.randomUUID();
+
+  localStorage.setItem("nhs_device_id", deviceId);
+
+}
 
 fetch(FLOW_URL, {
 
@@ -126,31 +136,34 @@ fetch(FLOW_URL, {
   },
 
   body: JSON.stringify({
+
     name: name,
-    date: "2/22/26"   // change per meeting
+    deviceId: deviceId
+
   })
 
 })
-  .then(function(response) {
+.then(response => response.json())
+.then(data => {
 
-    document.getElementById("status").innerText =
-      "Attendance recorded successfully.";
+  if (data.result === "success") {
 
-    document.getElementById("form").style.display = "none";
+    alert("Attendance recorded");
 
-  })
+  }
+  else {
 
-  .catch(function(error) {
+    alert(data.message);
 
-    alert("Error submitting attendance.");
+  }
 
-  });
-
+});
 }
 
 </script>
 
 </body>
 </html>
+
 
 
